@@ -11,6 +11,8 @@ import (
 // InstrumentKind identifies which OTel metric instrument is being created.
 type InstrumentKind int
 
+// Instrument-kind constants identify the OTel metric instrument families
+// the recognizer can match.
 const (
 	KindUnknown InstrumentKind = iota
 	KindInt64Counter
