@@ -5,6 +5,7 @@ go 1.25.0
 require (
 	go.opentelemetry.io/otel/metric v1.43.0
 	golang.org/x/tools v0.45.0
+	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
