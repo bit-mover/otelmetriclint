@@ -1,0 +1,39 @@
+# .otelmetriclint.yaml - example showing the full schema with defaults
+# commented out. Uncomment and edit deltas only; defaults are applied
+# under user values.
+
+# rules:
+#   string_literal: true   # always on by default
+#   structural:     true
+#   prefix:         false  # off by default - set true and configure prefix.allowed
+#   total_suffix:   true
+#   unit_suffix:    true
+#   histogram_unit: true
+
+# prefix:
+#   allowed:
+#     - mydomain
+
+# unit_suffix:
+#   # full default forbidden list (uncomment to override entirely)
+#   forbidden:
+#     - duration
+#     - seconds
+#     - bytes
+#     - ms
+#     - us
+#     - ns
+#     - s
+#     - kb
+#     - mb
+#     - gb
+#     - b
+#     - count
+#     - total
+#   # project-specific additions (merged into the forbidden list)
+#   additional: []
+
+# helpers:
+#   - pkg: my.org/weird
+#     func: NewMetric
+#     name_arg: 2  # zero-indexed
