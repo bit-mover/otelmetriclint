@@ -29,7 +29,7 @@ Without `-config`, the tool looks for `.otelmetriclint.yaml` in the current work
 | `structural` | on | Not snake_case / contains uppercase / leading digit / `..` / `__` |
 | `prefix` | **off** | First segment not in `prefix.allowed` (rule is no-op when allowed list is empty) |
 | `total_suffix` | on | Counter ends in `_total` (Prom exporter appends `_total`, causing double-suffix) |
-| `unit_suffix` | on | Final segment is a unit word like `duration`, `seconds`, `bytes` — units belong in `WithUnit(...)` |
+| `unit_suffix` | on | Final segment is a UCUM unit code like `seconds`, `bytes`, `ms` — units belong in `WithUnit(...)`. Quantity descriptors (`duration`, `count`) are allowed because OTel semconv uses them canonically (`http.server.request.duration`, `db.client.connection.count`). |
 | `histogram_unit` | on | Histogram created without `metric.WithUnit(...)` |
 
 ## Configuration
@@ -50,7 +50,7 @@ No per-project configuration is needed for standard wrapper patterns. Use `helpe
 
 See the [OTel→Prometheus compatibility spec](https://opentelemetry.io/docs/specs/otel/compatibility/prometheus_and_openmetrics/) and the [OTel metric semantic conventions](https://opentelemetry.io/docs/specs/semconv/general/metrics/). Short version:
 
-- The Prometheus exporter appends `_total` to counters and the unit from `WithUnit(...)` to all instruments. Source-side names that already contain `_total` or unit words produce double-encoded names like `foo_total_total` or `foo_duration_seconds`.
+- The Prometheus exporter appends `_total` to counters and the unit from `WithUnit(...)` to all instruments. Source-side names that already contain `_total` or a UCUM unit code produce double-encoded names like `foo_total_total` or `foo_seconds_seconds`. (Note: `foo_duration_seconds` is *not* a double-encode — `duration` is a quantity descriptor, not a unit; the Prom-side `_duration_seconds` is the canonical convention.)
 - Histograms in particular need explicit `WithUnit(...)` once unit suffixes are forbidden in the name.
 
 ## Credit
