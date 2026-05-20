@@ -90,3 +90,7 @@ func debugAnalyzer() *analysis.Analyzer {
 func TestFindMetricCallsRecognizesSDKAndWrappers(t *testing.T) {
 	analysistest.Run(t, analysistest.TestData(), debugAnalyzer(), "./src/good")
 }
+
+func TestFindMetricCallsRecognizesNonLiteralNames(t *testing.T) {
+	analysistest.Run(t, analysistest.TestData(), debugAnalyzer(), "./src/bad_string_literal")
+}
