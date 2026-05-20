@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2026-05-20
+
+### Changed
+
+- **Recognizer skips helper-wrapper bodies.** A CallExpr whose enclosing function or closure returns one of the `go.opentelemetry.io/otel/metric.*` instrument interfaces is no longer flagged as a metric-creation call site. Helper wrappers like `func MustInt64Counter(meter, name, opts) metric.Int64Counter { return meter.Int64Counter(name, opts...) }` previously generated false-positive `string_literal` diagnostics on the inner SDK call (because `name` is a parameter, not a literal). The real metric-creation site is at the wrapper's *callers*, where the name is a literal — that's where rules now apply.
+
+### Migration
+
+If a project's `func` or closure returns a metric instrument and contains a metric-instrument call inside, the linter now correctly attributes the check to the wrapper's callers. No config changes needed. Projects that *want* the v0.2.0 behavior of inspecting wrapper bodies have no migration path — the suppression is structural.
+
+[0.3.0]: https://github.com/bit-mover/otelmetriclint/releases/tag/v0.3.0
+
 ## [0.2.0] - 2026-05-20
 
 ### Changed
