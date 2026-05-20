@@ -50,9 +50,15 @@ func Default() Config {
 			"histogram_unit": true,
 		},
 		UnitSuffix: UnitSuffixConfig{
+			// UCUM unit codes and their expansions only. Quantity
+			// descriptors like `duration`, `count`, `size`,
+			// `utilization` are NOT included — OTel semconv uses them
+			// canonically (`http.server.request.duration`,
+			// `db.client.connection.count`). Including them would
+			// flag canonical OTel names.
 			Forbidden: []string{
-				"duration", "seconds", "bytes", "ms", "us", "ns", "s",
-				"kb", "mb", "gb", "b", "count", "total",
+				"seconds", "bytes", "ms", "us", "ns", "s",
+				"kb", "mb", "gb", "b", "total",
 			},
 		},
 	}

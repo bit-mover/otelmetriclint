@@ -15,9 +15,12 @@
 #     - mydomain
 
 # unit_suffix:
-#   # full default forbidden list (uncomment to override entirely)
+#   # full default forbidden list (uncomment to override entirely).
+#   # UCUM unit codes and their expansions only. Quantity descriptors
+#   # like `duration` and `count` are NOT included because OTel semconv
+#   # uses them canonically (http.server.request.duration,
+#   # db.client.connection.count).
 #   forbidden:
-#     - duration
 #     - seconds
 #     - bytes
 #     - ms
@@ -28,7 +31,6 @@
 #     - mb
 #     - gb
 #     - b
-#     - count
 #     - total
 #   # project-specific additions (merged into the forbidden list)
 #   additional: []

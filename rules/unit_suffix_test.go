@@ -11,14 +11,22 @@ func TestUnitSuffixRule(t *testing.T) {
 		name string
 		want bool
 	}{
-		// final segment is a unit word
-		{"cedar.authorize.duration", true},
+		// final segment is a UCUM unit code or its expansion
 		{"foo.seconds", true},
 		{"foo.bytes", true},
 		{"foo.ms", true},
-		// final segment ends in _unit (load_duration, batch_duration)
-		{"es.aggregate_store.load_duration", true},
-		{"outbox.batch_duration", true},
+		// `duration` and `count` are quantity descriptors, not units —
+		// OTel semconv uses them canonically (http.server.request.duration,
+		// db.client.connection.count) — the rule must NOT flag them.
+		{"http.server.request.duration", false},
+		{"db.client.connection.count", false},
+		{"cedar.authorize.duration", false},
+		// `_<unit>` as a final-segment suffix still fires for true units
+		{"foo.bar_seconds", true},
+		{"foo.bar_bytes", true},
+		// but not for quantity descriptors
+		{"es.aggregate_store.load_duration", false},
+		{"outbox.batch_duration", false},
 		// not a unit
 		{"iam.users.registrations", false},
 		{"cedar.authorize", false},
@@ -38,8 +46,10 @@ func TestUnitSuffixRule(t *testing.T) {
 	}
 }
 
-// defaultUnitSuffixList is exported to tests for reuse; same list lives
-// in the analyzer's config Default() in the root package.
+// defaultUnitSuffixList mirrors the list in the analyzer's config
+// Default() in the root package. Contains UCUM unit codes and their
+// expansions only — quantity descriptors like `duration` and `count` are
+// excluded because OTel semconv uses them canonically.
 func defaultUnitSuffixList() []string {
-	return []string{"duration", "seconds", "bytes", "ms", "us", "ns", "s", "kb", "mb", "gb", "b", "count", "total"}
+	return []string{"seconds", "bytes", "ms", "us", "ns", "s", "kb", "mb", "gb", "b", "total"}
 }
