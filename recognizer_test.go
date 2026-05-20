@@ -4,6 +4,8 @@ import (
 	"testing"
 
 	_ "go.opentelemetry.io/otel/metric" // ensure module graph keeps otel/metric so packages.Load can resolve it
+	"golang.org/x/tools/go/analysis"
+	"golang.org/x/tools/go/analysis/analysistest"
 	"golang.org/x/tools/go/packages"
 
 	"github.com/bit-mover/otelmetriclint/rules"
@@ -68,4 +70,23 @@ func TestMatchInstrumentKindNonMetricType(t *testing.T) {
 	if ok {
 		t.Errorf("expected ok=false for errors.New, got kind=%v", kind)
 	}
+}
+
+// debugAnalyzer records every MetricCall the recognizer finds. Used to
+// unit-test findMetricCalls in isolation, separate from the rule pipeline.
+func debugAnalyzer() *analysis.Analyzer {
+	return &analysis.Analyzer{
+		Name: "recognizerdebug",
+		Doc:  "records every MetricCall",
+		Run: func(pass *analysis.Pass) (interface{}, error) {
+			for _, c := range findMetricCalls(pass, nil) {
+				pass.Reportf(c.Pos, "found %s name=%q", c.Kind, c.Name)
+			}
+			return nil, nil
+		},
+	}
+}
+
+func TestFindMetricCallsRecognizesSDKAndWrappers(t *testing.T) {
+	analysistest.Run(t, analysistest.TestData(), debugAnalyzer(), "./src/good")
 }
