@@ -1,0 +1,5 @@
+rules:
+  prefix: true
+prefix:
+  allowed:
+    - allowed
