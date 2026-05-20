@@ -14,6 +14,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 If a project's `func` or closure returns a metric instrument and contains a metric-instrument call inside, the linter now correctly attributes the check to the wrapper's callers. No config changes needed. Projects that *want* the v0.2.0 behavior of inspecting wrapper bodies have no migration path — the suppression is structural.
 
+### Known Limitations
+
+- Wrapper-body suppression does not make options inside a closure body visible at later function-typed local call sites. A closure helper that default-passes `metric.WithUnit(...)` can still produce a false-positive `histogram_unit` diagnostic when invoked later. Inline the metric construction at the call site until inline suppression support is available.
+
 [0.3.0]: https://github.com/bit-mover/otelmetriclint/releases/tag/v0.3.0
 
 ## [0.2.0] - 2026-05-20

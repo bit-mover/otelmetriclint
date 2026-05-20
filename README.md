@@ -4,10 +4,19 @@ A Go static analyzer for OpenTelemetry metric names. Catches the OTel→Promethe
 
 Built on `golang.org/x/tools/go/analysis`. Runs standalone via `otelmetriclint ./...` or via `go vet -vettool=$(which otelmetriclint) ./...`.
 
+Status: `v0.3.0` is the current release. The analyzer is usable today, but still pre-1.0; rule defaults and recognizer behavior can tighten as more OpenTelemetry metric patterns are covered.
+
 ## Install
 
 ```bash
 go install github.com/bit-mover/otelmetriclint/cmd/otelmetriclint@latest
+```
+
+For Go 1.24+ projects that want to track the linter as a tool dependency in `go.mod`:
+
+```bash
+go get -tool github.com/bit-mover/otelmetriclint/cmd/otelmetriclint@v0.3.0
+go tool otelmetriclint ./...
 ```
 
 Or download a pre-built binary for your platform from the [releases page](https://github.com/bit-mover/otelmetriclint/releases).
@@ -35,6 +44,10 @@ Without `-config`, the tool looks for `.otelmetriclint.yaml` in the current work
 ## Configuration
 
 See [.otelmetriclint.yaml](./.otelmetriclint.yaml) for an annotated example. All fields are optional; user config merges over defaults. Unknown fields error at load to catch typos.
+
+## Known limitations
+
+- **Closure-call-site analysis is limited.** Options passed inside a closure body are invisible at a later call through a function-typed local variable. For example, if `histogram := func(...) metric.Float64Histogram { ... metric.WithUnit("s") ... }` is later called as `histogram("foo", "bar")`, the call site is recognized as the metric-creation site but the defaulted `WithUnit("s")` option inside the closure body is not visible there. This can produce false-positive `histogram_unit` diagnostics. Workaround: inline the metric construction at the call site so options are statically visible, or use an inline suppression once `otelmetriclint:disable:histogram_unit` support lands.
 
 ## Detected call sites
 
