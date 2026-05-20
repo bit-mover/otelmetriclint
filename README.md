@@ -4,17 +4,54 @@ A Go static analyzer for OpenTelemetry metric names. Catches the OTel→Promethe
 
 Built on `golang.org/x/tools/go/analysis`. Runs standalone via `otelmetriclint ./...` or via `go vet -vettool=$(which otelmetriclint) ./...`.
 
-## Status
-
-Pre-release. Tracking toward `v0.1.0`.
-
 ## Install
 
 ```bash
 go install github.com/bit-mover/otelmetriclint/cmd/otelmetriclint@latest
 ```
 
-Or download a pre-built binary from the [releases page](https://github.com/bit-mover/otelmetriclint/releases).
+Or download a pre-built binary for your platform from the [releases page](https://github.com/bit-mover/otelmetriclint/releases).
+
+## Usage
+
+```bash
+otelmetriclint ./...
+otelmetriclint -config=path/to/.otelmetriclint.yaml ./...
+```
+
+Without `-config`, the tool looks for `.otelmetriclint.yaml` in the current working directory; if absent, it falls back to built-in defaults.
+
+## Rules
+
+| ID | Default | Catches |
+| --- | --- | --- |
+| `string_literal` | on | Name argument is not a string literal — can't statically check anything else |
+| `structural` | on | Not snake_case / contains uppercase / leading digit / `..` / `__` |
+| `prefix` | **off** | First segment not in `prefix.allowed` (rule is no-op when allowed list is empty) |
+| `total_suffix` | on | Counter ends in `_total` (Prom exporter appends `_total`, causing double-suffix) |
+| `unit_suffix` | on | Final segment is a unit word like `duration`, `seconds`, `bytes` — units belong in `WithUnit(...)` |
+| `histogram_unit` | on | Histogram created without `metric.WithUnit(...)` |
+
+## Configuration
+
+See [.otelmetriclint.yaml](./.otelmetriclint.yaml) for an annotated example. All fields are optional; user config merges over defaults. Unknown fields error at load to catch typos.
+
+## Detected call sites
+
+The recognizer is type-driven: any call whose result type matches a `go.opentelemetry.io/otel/metric.*` instrument interface is treated as a metric-creation call. This catches:
+
+- SDK methods (`meter.Int64Counter("name")`, etc.) — return tuple `(Int64Counter, error)`
+- Must-style wrapper helpers (`MustInt64Counter(meter, "name")`) — return the instrument directly
+- Generic helpers — `pass.TypesInfo` resolves return types correctly
+
+No per-project configuration is needed for standard wrapper patterns. Use `helpers:` config only for wrappers where the metric name is not the first string argument.
+
+## Why these specific rules
+
+See the [OTel→Prometheus compatibility spec](https://opentelemetry.io/docs/specs/otel/compatibility/prometheus_and_openmetrics/) and the [OTel metric semantic conventions](https://opentelemetry.io/docs/specs/semconv/general/metrics/). Short version:
+
+- The Prometheus exporter appends `_total` to counters and the unit from `WithUnit(...)` to all instruments. Source-side names that already contain `_total` or unit words produce double-encoded names like `foo_total_total` or `foo_duration_seconds`.
+- Histograms in particular need explicit `WithUnit(...)` once unit suffixes are forbidden in the name.
 
 ## Credit
 
