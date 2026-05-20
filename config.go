@@ -1,7 +1,9 @@
 package otelmetriclint
 
 import (
+	"errors"
 	"fmt"
+	"io"
 	"os"
 
 	"gopkg.in/yaml.v3"
@@ -72,6 +74,10 @@ func Load(path string) (Config, error) {
 	dec.KnownFields(true)
 	var user Config
 	if err := dec.Decode(&user); err != nil {
+		// An empty or all-comment file is logically "no overrides" — keep defaults.
+		if errors.Is(err, io.EOF) {
+			return c, nil
+		}
 		return Config{}, fmt.Errorf("decode config %s: %w", path, err)
 	}
 	merge(&c, user)

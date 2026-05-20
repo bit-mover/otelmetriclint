@@ -68,3 +68,20 @@ func TestLoadConfigEmptyPathReturnsDefaults(t *testing.T) {
 		t.Error("Load(\"\") should equal Default()")
 	}
 }
+
+func TestLoadConfigEmptyFileReturnsDefaults(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, ".otelmetriclint.yaml")
+	// All-comment file — yaml.Decode returns io.EOF, which should be treated as
+	// "no overrides" so the shipped example config works out of the box.
+	if err := os.WriteFile(path, []byte("# only comments\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	c, err := Load(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(c, Default()) {
+		t.Error("Load of comment-only file should equal Default()")
+	}
+}
