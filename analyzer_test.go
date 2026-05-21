@@ -21,6 +21,7 @@ func TestAnalyzerDefault(t *testing.T) {
 		"./src/bad_total_suffix",
 		"./src/bad_unit_suffix",
 		"./src/bad_histogram_unit",
+		"./src/suppress_smoke",
 	} {
 		t.Run(dir, func(t *testing.T) {
 			analysistest.Run(t, analysistest.TestData(), a, dir)
