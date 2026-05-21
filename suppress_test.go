@@ -159,10 +159,15 @@ func f() {
 }
 
 func TestSuppressed_NoAbovePackage(t *testing.T) {
+	// Includes an unrelated //nolint:otelmetriclint elsewhere in the file
+	// so the index's per-file map is non-nil. Without that, the lines==nil
+	// short-circuit in suppressed() would return false before the
+	// above-package branch ever runs, leaving the new code path untested.
 	src := `package p
 
-// not a nolint directive
 func f() {
+    _ = "decoy" //nolint:otelmetriclint
+
     _ = "not suppressed"
 }
 `
@@ -170,7 +175,7 @@ func f() {
 	idx := buildSuppressIndex(pass)
 	line := lineOf(t, src, `"not suppressed"`)
 	if idx.suppressed(callAt(t, pass, line)) {
-		t.Errorf("file without directive: want suppressed=false")
+		t.Errorf("file without above-package directive: want suppressed=false")
 	}
 }
 
