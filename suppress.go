@@ -95,6 +95,10 @@ type suppressIndex struct {
 	// //nolint directive ends. A trailing directive's start and end are
 	// the same line; a multi-line block directive's end is the last line.
 	directiveEndLine map[*token.File]map[int]bool
+	// packageLine[file] is the source line of the file's `package` keyword.
+	// Used to evaluate file-level directives (`//nolint:otelmetriclint`
+	// placed immediately above `package`).
+	packageLine map[*token.File]int
 }
 
 // buildSuppressIndex scans every comment in pass.Files for //nolint
@@ -104,11 +108,15 @@ func buildSuppressIndex(pass *analysis.Pass) suppressIndex {
 	idx := suppressIndex{
 		fset:             pass.Fset,
 		directiveEndLine: make(map[*token.File]map[int]bool),
+		packageLine:      make(map[*token.File]int),
 	}
 	for _, file := range pass.Files {
 		tokFile := pass.Fset.File(file.Pos())
 		if tokFile == nil {
 			continue
+		}
+		if file.Package.IsValid() {
+			idx.packageLine[tokFile] = pass.Fset.Position(file.Package).Line
 		}
 		for _, group := range file.Comments {
 			for _, c := range group.List {
@@ -155,12 +163,16 @@ func (s suppressIndex) suppressed(call rules.MetricCall) bool {
 	//   - FuncDecl doc comment (Go convention: doc's last line == funcLine-1)
 	//   - Free-floating //nolint above a FuncDecl (no doc)
 	//   - //nolint above a FuncLit (closure)
-	// Further placement branches (above-package) follow.
 	for _, fn := range call.EnclosingFuncs {
 		funcLine := s.funcKeywordLine(fn)
 		if funcLine > 0 && lines[funcLine-1] {
 			return true
 		}
+	}
+	// File-level: directive ends on the line immediately above the `package`
+	// keyword.
+	if pkgLine := s.packageLine[tokFile]; pkgLine > 0 && lines[pkgLine-1] {
+		return true
 	}
 	return false
 }

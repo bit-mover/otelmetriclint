@@ -142,6 +142,38 @@ func f() {
 	}
 }
 
+func TestSuppressed_AbovePackage(t *testing.T) {
+	src := `//nolint:otelmetriclint
+package p
+
+func f() {
+    _ = "suppressed because file-level directive is above package"
+}
+`
+	pass := passFromSource(t, src)
+	idx := buildSuppressIndex(pass)
+	line := lineOf(t, src, `"suppressed because file-level directive is above package"`)
+	if !idx.suppressed(callAt(t, pass, line)) {
+		t.Errorf("line %d in file with above-package directive: want suppressed=true", line)
+	}
+}
+
+func TestSuppressed_NoAbovePackage(t *testing.T) {
+	src := `package p
+
+// not a nolint directive
+func f() {
+    _ = "not suppressed"
+}
+`
+	pass := passFromSource(t, src)
+	idx := buildSuppressIndex(pass)
+	line := lineOf(t, src, `"not suppressed"`)
+	if idx.suppressed(callAt(t, pass, line)) {
+		t.Errorf("file without directive: want suppressed=false")
+	}
+}
+
 func TestSuppressed_AboveFunc(t *testing.T) {
 	src := `package p
 
