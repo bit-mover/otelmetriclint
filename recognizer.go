@@ -66,11 +66,12 @@ func findMetricCalls(pass *analysis.Pass, overrides []HelperOverride) []rules.Me
 	var out []rules.MetricCall
 	overrideIdx := buildOverrideIndex(overrides)
 	for _, file := range pass.Files {
-		walkWithFuncStack(file, nil, func(call *ast.CallExpr, funcStack []*ast.FuncType) {
+		walkWithFuncStack(file, nil, func(call *ast.CallExpr, funcStack []ast.Node) {
 			if isInsideMetricHelper(pass, funcStack) {
 				return
 			}
 			if mc, ok := recognizeCall(pass, call, overrideIdx); ok {
+				mc.EnclosingFuncs = append([]ast.Node(nil), funcStack...)
 				out = append(out, mc)
 			}
 		})
@@ -79,26 +80,26 @@ func findMetricCalls(pass *analysis.Pass, overrides []HelperOverride) []rules.Me
 }
 
 // walkWithFuncStack walks the AST rooted at n in pre-order, maintaining
-// a stack of enclosing *ast.FuncType (one per FuncDecl or FuncLit). The
-// visit callback is invoked for every *ast.CallExpr with the current
-// stack snapshot. Function bodies are descended into recursively so the
-// stack tracks the correct lexical scope.
+// a stack of enclosing *ast.FuncDecl or *ast.FuncLit nodes (one per
+// enclosing function or closure). The visit callback is invoked for every
+// *ast.CallExpr with the current stack snapshot. Function bodies are
+// descended into recursively so the stack tracks the correct lexical scope.
 func walkWithFuncStack(
 	n ast.Node,
-	stack []*ast.FuncType,
-	visit func(*ast.CallExpr, []*ast.FuncType),
+	stack []ast.Node,
+	visit func(*ast.CallExpr, []ast.Node),
 ) {
 	switch node := n.(type) {
 	case nil:
 		return
 	case *ast.FuncDecl:
-		// Push this func's type; recurse into the body only.
+		// Push this FuncDecl; recurse into the body only.
 		if node.Body != nil {
-			walkWithFuncStack(node.Body, append(stack, node.Type), visit) //nolint:gocritic // intentional: a new slice keeps the caller's stack scoped
+			walkWithFuncStack(node.Body, append(stack, ast.Node(node)), visit) //nolint:gocritic // intentional: a new slice keeps the caller's stack scoped
 		}
 		return
 	case *ast.FuncLit:
-		walkWithFuncStack(node.Body, append(stack, node.Type), visit) //nolint:gocritic // intentional: a new slice keeps the caller's stack scoped
+		walkWithFuncStack(node.Body, append(stack, ast.Node(node)), visit) //nolint:gocritic // intentional: a new slice keeps the caller's stack scoped
 		return
 	case *ast.CallExpr:
 		visit(node, stack)
@@ -134,18 +135,28 @@ func childrenOf(n ast.Node) []ast.Node {
 // Such functions are wrappers (`MustInt64Counter`, application-level
 // `counter := func(name, desc string) metric.Int64Counter { ... }`) —
 // the real metric-creation site is at the wrapper's callers.
-func isInsideMetricHelper(pass *analysis.Pass, funcStack []*ast.FuncType) bool {
-	for _, ft := range funcStack {
-		if funcReturnsMetricInstrument(pass, ft) {
+func isInsideMetricHelper(pass *analysis.Pass, funcStack []ast.Node) bool {
+	for _, fn := range funcStack {
+		if funcReturnsMetricInstrument(pass, fn) {
 			return true
 		}
 	}
 	return false
 }
 
-// funcReturnsMetricInstrument reports whether any result of ft is a
+// funcReturnsMetricInstrument reports whether any result of fn is a
 // metric instrument interface from go.opentelemetry.io/otel/metric.
-func funcReturnsMetricInstrument(pass *analysis.Pass, ft *ast.FuncType) bool {
+// fn must be *ast.FuncDecl or *ast.FuncLit; other nodes return false.
+func funcReturnsMetricInstrument(pass *analysis.Pass, fn ast.Node) bool {
+	var ft *ast.FuncType
+	switch n := fn.(type) {
+	case *ast.FuncDecl:
+		ft = n.Type
+	case *ast.FuncLit:
+		ft = n.Type
+	default:
+		return false
+	}
 	if ft == nil || ft.Results == nil {
 		return false
 	}

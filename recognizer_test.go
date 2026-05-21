@@ -1,6 +1,8 @@
 package otelmetriclint
 
 import (
+	"go/ast"
+	"strings"
 	"testing"
 
 	_ "go.opentelemetry.io/otel/metric" // ensure module graph keeps otel/metric so packages.Load can resolve it
@@ -93,4 +95,35 @@ func TestFindMetricCallsRecognizesSDKAndWrappers(t *testing.T) {
 
 func TestFindMetricCallsRecognizesNonLiteralNames(t *testing.T) {
 	analysistest.Run(t, analysistest.TestData(), debugAnalyzer(), "./src/bad_string_literal")
+}
+
+// enclosingDebugAnalyzer reports the enclosing func chain for each
+// recognized MetricCall as a string like "enclosing=[FuncDecl,FuncLit]".
+// Used to assert on MetricCall.EnclosingFuncs via // want strings.
+func enclosingDebugAnalyzer() *analysis.Analyzer {
+	return &analysis.Analyzer{
+		Name: "enclosingdebug",
+		Doc:  "reports the enclosing func chain per MetricCall",
+		Run: func(pass *analysis.Pass) (interface{}, error) {
+			for _, c := range findMetricCalls(pass, nil) {
+				kinds := make([]string, 0, len(c.EnclosingFuncs))
+				for _, fn := range c.EnclosingFuncs {
+					switch fn.(type) {
+					case *ast.FuncDecl:
+						kinds = append(kinds, "FuncDecl")
+					case *ast.FuncLit:
+						kinds = append(kinds, "FuncLit")
+					default:
+						kinds = append(kinds, "?")
+					}
+				}
+				pass.Reportf(c.Pos, "enclosing=[%s]", strings.Join(kinds, ","))
+			}
+			return nil, nil
+		},
+	}
+}
+
+func TestFindMetricCallsPopulatesEnclosingFuncs(t *testing.T) {
+	analysistest.Run(t, analysistest.TestData(), enclosingDebugAnalyzer(), "./src/recognizer_enclosing")
 }

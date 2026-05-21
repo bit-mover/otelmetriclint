@@ -64,6 +64,11 @@ type MetricCall struct {
 	Name    string
 	NameArg ast.Expr
 	Options []ast.Expr
+	// EnclosingFuncs is the chain of enclosing *ast.FuncDecl or
+	// *ast.FuncLit nodes, outermost first. Empty for top-level calls.
+	// Populated by the recognizer; consumed by the suppression layer
+	// to find directives placed above an enclosing func.
+	EnclosingFuncs []ast.Node
 }
 
 // Diagnostic is one rule violation.
