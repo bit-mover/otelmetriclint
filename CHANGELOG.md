@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **Inline suppression directives.** Standalone runs now honor `//nolint:otelmetriclint` placed trailing on a call's line, on the line immediately above a call, above an enclosing `func` or closure, or above the `package` keyword. Mirrors the subset of golangci-lint's nolint grammar that whole-linter suppression covers — no per-rule scoping. See README §"Suppressing diagnostics". Closes #18.
+
 ## [0.3.0] - 2026-05-20
 
 ### Changed
