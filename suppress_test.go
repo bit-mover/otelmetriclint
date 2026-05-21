@@ -141,3 +141,69 @@ func f() {
 		t.Errorf("call on line %d: want suppressed=false, got true", notSuppressedLine)
 	}
 }
+
+func TestSuppressed_AboveFunc(t *testing.T) {
+	src := `package p
+
+//nolint:otelmetriclint
+func WithFreeFloatingComment() {
+    _ = "suppressed (free-floating above func)"
+}
+
+// WithDocComment does X.
+//
+//nolint:otelmetriclint
+func WithDocComment() {
+    _ = "suppressed (doc comment carries directive)"
+}
+
+func NotSuppressed() {
+    _ = "not suppressed"
+}
+
+func WithClosure() {
+    //nolint:otelmetriclint
+    fn := func() {
+        _ = "suppressed (above closure)"
+    }
+    _ = fn
+}
+`
+	pass := passFromSource(t, src)
+	idx := buildSuppressIndex(pass)
+
+	file := pass.Files[0]
+	funcByName := map[string]ast.Node{}
+	var funcLit *ast.FuncLit
+	ast.Inspect(file, func(n ast.Node) bool {
+		if fd, ok := n.(*ast.FuncDecl); ok {
+			funcByName[fd.Name.Name] = fd
+		}
+		if fl, ok := n.(*ast.FuncLit); ok {
+			funcLit = fl
+		}
+		return true
+	})
+
+	tests := []struct {
+		name           string
+		marker         string
+		enclosing      []ast.Node
+		wantSuppressed bool
+	}{
+		{"free-floating above func", `"suppressed (free-floating above func)"`, []ast.Node{funcByName["WithFreeFloatingComment"]}, true},
+		{"doc comment carries directive", `"suppressed (doc comment carries directive)"`, []ast.Node{funcByName["WithDocComment"]}, true},
+		{"no directive on this func", `"not suppressed"`, []ast.Node{funcByName["NotSuppressed"]}, false},
+		{"above closure", `"suppressed (above closure)"`, []ast.Node{funcByName["WithClosure"], funcLit}, true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			line := lineOf(t, src, tt.marker)
+			call := callAt(t, pass, line)
+			call.EnclosingFuncs = tt.enclosing
+			if got := idx.suppressed(call); got != tt.wantSuppressed {
+				t.Errorf("line %d: got suppressed=%v, want %v", line, got, tt.wantSuppressed)
+			}
+		})
+	}
+}

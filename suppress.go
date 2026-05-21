@@ -1,6 +1,7 @@
 package otelmetriclint
 
 import (
+	"go/ast"
 	"go/token"
 	"strings"
 
@@ -146,9 +147,42 @@ func (s suppressIndex) suppressed(call rules.MetricCall) bool {
 	}
 	// Above call: directive ends on the line immediately preceding the call.
 	// A blank line between directive and call breaks adjacency (golangci's rule).
-	// Further placement branches (above-func, above-package) follow.
 	if lines[callLine-1] {
 		return true
 	}
+	// Above any enclosing func: directive ends on the line immediately above
+	// the `func` keyword. One uniform check covers three sub-cases:
+	//   - FuncDecl doc comment (Go convention: doc's last line == funcLine-1)
+	//   - Free-floating //nolint above a FuncDecl (no doc)
+	//   - //nolint above a FuncLit (closure)
+	// Further placement branches (above-package) follow.
+	for _, fn := range call.EnclosingFuncs {
+		funcLine := s.funcKeywordLine(fn)
+		if funcLine > 0 && lines[funcLine-1] {
+			return true
+		}
+	}
 	return false
+}
+
+// funcKeywordLine returns the source line of the `func` keyword for a
+// *ast.FuncDecl or *ast.FuncLit. Returns 0 for unsupported nodes.
+func (s suppressIndex) funcKeywordLine(n ast.Node) int {
+	var fnTypePos token.Pos
+	switch fn := n.(type) {
+	case *ast.FuncDecl:
+		if fn.Type != nil {
+			fnTypePos = fn.Type.Func
+		}
+	case *ast.FuncLit:
+		if fn.Type != nil {
+			fnTypePos = fn.Type.Func
+		}
+	default:
+		return 0
+	}
+	if !fnTypePos.IsValid() {
+		return 0
+	}
+	return s.fset.Position(fnTypePos).Line
 }
