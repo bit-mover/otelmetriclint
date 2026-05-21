@@ -12,12 +12,16 @@ const linterName = "otelmetriclint"
 //
 //	//nolint                          → suppress everything
 //	//nolint:<linter>[,<linter>...]   → suppress listed linters
-//	//nolint:<list> // reason text    → trailing reason is ignored
+//	//nolint:<list> <reason text>     → reason text after the first "//"
+//	                                    or "/*" in the list segment is
+//	                                    ignored (no leading space required)
 //
 // Parser quirks (also from golangci):
 //   - Leading "//" or "/*" required; no space between "//" and "nolint".
 //   - Keyword is "nolint", case-sensitive.
 //   - Linter names match exactly (no prefix/substring).
+//   - "//nolint:" with an empty list matches nothing — it is NOT treated
+//     as bare "//nolint". This mirrors current golangci-lint behavior.
 func matchesNoLint(commentText string) bool {
 	body, ok := stripCommentDelimiters(commentText)
 	if !ok {
@@ -35,8 +39,9 @@ func matchesNoLint(commentText string) bool {
 		return false // e.g. "nolintfoo"
 	}
 	listAndReason := rest[1:]
-	// Trim a trailing " // reason" (or " /* reason */") — anything after
-	// the first " //" or " /*" is reason text per golangci's convention.
+	// Trim trailing reason text. Anything after the first "//" or "/*" in
+	// the list segment is treated as reason text (no leading space required),
+	// matching golangci-lint.
 	if idx := strings.Index(listAndReason, "//"); idx != -1 {
 		listAndReason = listAndReason[:idx]
 	}

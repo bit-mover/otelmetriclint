@@ -31,6 +31,9 @@ func TestMatchesNoLint(t *testing.T) {
 		{"//nolintfoo", false},
 		{"// just a comment", false},
 		{"", false},
+		// "//nolint:" with an empty list is NOT treated as bare //nolint;
+		// it matches nothing. Mirrors golangci-lint.
+		{"//nolint:", false},
 	}
 	for _, c := range cases {
 		t.Run(c.in, func(t *testing.T) {
