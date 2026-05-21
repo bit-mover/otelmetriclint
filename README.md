@@ -4,10 +4,21 @@ A Go static analyzer for OpenTelemetry metric names. Catches the OTel→Promethe
 
 Built on `golang.org/x/tools/go/analysis`. Runs standalone via `otelmetriclint ./...` or via `go vet -vettool=$(which otelmetriclint) ./...`.
 
+## Why this exists
+
+I migrated a service from Prometheus to OpenTelemetry metrics and found it surprisingly easy to get wrong: names that worked fine under the Prometheus client got double-encoded by the OTel→Prom exporter (`_total_total`, `_seconds_seconds`), units belonged in `WithUnit(...)` instead of the name, and the failure mode was silent — metrics shipped, dashboards just broke. I looked for a linter that would catch these at build time and didn't find one, so I wrote this.
+
 ## Install
 
 ```bash
 go install github.com/bit-mover/otelmetriclint/cmd/otelmetriclint@latest
+```
+
+Or, with Go 1.24+, track it as a tool dependency in your project's `go.mod` so Renovate / Dependabot can auto-update it:
+
+```bash
+go get -tool github.com/bit-mover/otelmetriclint/cmd/otelmetriclint@latest
+go tool otelmetriclint ./...
 ```
 
 Or download a pre-built binary for your platform from the [releases page](https://github.com/bit-mover/otelmetriclint/releases).
@@ -35,6 +46,10 @@ Without `-config`, the tool looks for `.otelmetriclint.yaml` in the current work
 ## Configuration
 
 See [.otelmetriclint.yaml](./.otelmetriclint.yaml) for an annotated example. All fields are optional; user config merges over defaults. Unknown fields error at load to catch typos.
+
+## Known limitations
+
+- **Closure-call-site analysis is limited.** Wrapper-body suppression (v0.3.0) only catches calls inside a function or closure whose return type is a metric instrument. If a wrapper is invoked through a function-typed local variable — e.g. `histogram := func(name string, opts ...metric.Float64HistogramOption) metric.Float64Histogram { ... meter.Float64Histogram(name, append(opts, metric.WithUnit("s"))...) }` and then `histogram("foo")` — the recognizer still sees the call site as a metric-creation site, and options set inside the closure body (like `WithUnit("s")`) are invisible. This typically produces false-positive `histogram_unit` diagnostics. Workaround: inline the construction at the call site so the option is statically visible.
 
 ## Detected call sites
 
