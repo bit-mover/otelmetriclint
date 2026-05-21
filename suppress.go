@@ -141,6 +141,9 @@ func (s suppressIndex) suppressed(call rules.MetricCall) bool {
 	}
 	callLine := s.fset.Position(call.Pos).Line
 	// Trailing: directive on the same line as the call.
+	// Additional placement branches (above-call, above-func, above-package)
+	// are added in subsequent commits; keep the if/return-true pattern so
+	// they slot in cleanly.
 	if lines[callLine] {
 		return true
 	}

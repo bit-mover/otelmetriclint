@@ -5,6 +5,7 @@ import (
 	"go/parser"
 	"go/token"
 	"go/types"
+	"strings"
 	"testing"
 
 	"golang.org/x/tools/go/analysis"
@@ -79,6 +80,19 @@ func callAt(t *testing.T, pass *analysis.Pass, line int) rules.MetricCall {
 	return rules.MetricCall{Pos: tokFile.LineStart(line)}
 }
 
+// lineOf returns the 1-indexed line of the first occurrence of marker in
+// src. Use to anchor test assertions against the source text rather than
+// hard-coded line numbers, which silently break when the source string
+// is edited.
+func lineOf(t *testing.T, src, marker string) int {
+	t.Helper()
+	idx := strings.Index(src, marker)
+	if idx < 0 {
+		t.Fatalf("marker %q not found in source", marker)
+	}
+	return strings.Count(src[:idx], "\n") + 1
+}
+
 func TestSuppressed_Trailing(t *testing.T) {
 	src := `package p
 
@@ -90,8 +104,8 @@ func f() {
 	pass := passFromSource(t, src)
 	idx := buildSuppressIndex(pass)
 
-	suppressedLine := 4
-	notSuppressedLine := 5
+	suppressedLine := lineOf(t, src, `"suppressed"`)
+	notSuppressedLine := lineOf(t, src, `"not suppressed"`)
 
 	if !idx.suppressed(callAt(t, pass, suppressedLine)) {
 		t.Errorf("call on line %d: want suppressed=true, got false", suppressedLine)
