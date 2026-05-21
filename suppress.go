@@ -1,6 +1,13 @@
 package otelmetriclint
 
-import "strings"
+import (
+	"go/token"
+	"strings"
+
+	"golang.org/x/tools/go/analysis"
+
+	"github.com/bit-mover/otelmetriclint/rules"
+)
 
 const linterName = "otelmetriclint"
 
@@ -78,3 +85,64 @@ func stripCommentDelimiters(commentText string) (string, bool) {
 }
 
 func isSpace(b byte) bool { return b == ' ' || b == '\t' }
+
+// suppressIndex answers "is this MetricCall suppressed?" in O(1) after
+// construction. Built once per analyzer Run.
+type suppressIndex struct {
+	fset *token.FileSet
+	// directiveEndLine[file] is the set of line numbers where a matching
+	// //nolint directive ends. A trailing directive's start and end are
+	// the same line; a multi-line block directive's end is the last line.
+	directiveEndLine map[*token.File]map[int]bool
+}
+
+// buildSuppressIndex scans every comment in pass.Files for //nolint
+// directives that suppress this analyzer and records each directive's
+// end line.
+func buildSuppressIndex(pass *analysis.Pass) suppressIndex {
+	idx := suppressIndex{
+		fset:             pass.Fset,
+		directiveEndLine: make(map[*token.File]map[int]bool),
+	}
+	for _, file := range pass.Files {
+		tokFile := pass.Fset.File(file.Pos())
+		if tokFile == nil {
+			continue
+		}
+		for _, group := range file.Comments {
+			for _, c := range group.List {
+				if !matchesNoLint(c.Text) {
+					continue
+				}
+				endLine := pass.Fset.Position(c.End()).Line
+				if idx.directiveEndLine[tokFile] == nil {
+					idx.directiveEndLine[tokFile] = make(map[int]bool)
+				}
+				idx.directiveEndLine[tokFile][endLine] = true
+			}
+		}
+	}
+	return idx
+}
+
+// suppressed reports whether a MetricCall at call.Pos is covered by any
+// recognized //nolint directive.
+func (s suppressIndex) suppressed(call rules.MetricCall) bool {
+	if !call.Pos.IsValid() {
+		return false
+	}
+	tokFile := s.fset.File(call.Pos)
+	if tokFile == nil {
+		return false
+	}
+	lines := s.directiveEndLine[tokFile]
+	if lines == nil {
+		return false
+	}
+	callLine := s.fset.Position(call.Pos).Line
+	// Trailing: directive on the same line as the call.
+	if lines[callLine] {
+		return true
+	}
+	return false
+}
