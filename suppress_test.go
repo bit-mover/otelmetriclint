@@ -93,11 +93,38 @@ func lineOf(t *testing.T, src, marker string) int {
 	return strings.Count(src[:idx], "\n") + 1
 }
 
+func TestSuppressed_AboveCall(t *testing.T) {
+	src := `package p
+
+func f() {
+    //nolint:otelmetriclint
+    _ = "suppressed"
+
+    //nolint:otelmetriclint
+
+    _ = "blank-line gap, not suppressed"
+}
+`
+	pass := passFromSource(t, src)
+	idx := buildSuppressIndex(pass)
+
+	suppressedLine := lineOf(t, src, `"suppressed"`)
+	notSuppressedLine := lineOf(t, src, `"blank-line gap, not suppressed"`)
+
+	if !idx.suppressed(callAt(t, pass, suppressedLine)) {
+		t.Errorf("line %d (directive immediately above): want suppressed=true", suppressedLine)
+	}
+	if idx.suppressed(callAt(t, pass, notSuppressedLine)) {
+		t.Errorf("line %d (blank line between directive and call): want suppressed=false", notSuppressedLine)
+	}
+}
+
 func TestSuppressed_Trailing(t *testing.T) {
 	src := `package p
 
 func f() {
     _ = "suppressed" //nolint:otelmetriclint
+
     _ = "not suppressed"
 }
 `
