@@ -47,6 +47,32 @@ Without `-config`, the tool looks for `.otelmetriclint.yaml` in the current work
 
 See [.otelmetriclint.yaml](./.otelmetriclint.yaml) for an annotated example. All fields are optional; user config merges over defaults. Unknown fields error at load to catch typos.
 
+## Suppressing diagnostics
+
+Standalone runs honor a subset of golangci-lint's `//nolint` directive grammar. Whole-linter suppression only — no per-rule scoping. The same comments that work under golangci-lint also work when running this analyzer directly.
+
+```go
+// trailing on the call's start line
+_, _ = m.Int64Counter("legacy_total") //nolint:otelmetriclint
+
+// immediately above the call (adjacent — no blank line)
+//nolint:otelmetriclint
+_, _ = m.Int64Counter("legacy_total")
+
+// above an enclosing FuncDecl or FuncLit (covers the whole body)
+//nolint:otelmetriclint
+func registerLegacyMetrics(m metric.Meter) {
+    _, _ = m.Int64Counter("a_total")
+    _, _ = m.Int64Counter("b_total")
+}
+
+// above `package` (covers the whole file)
+//nolint:otelmetriclint
+package legacy
+```
+
+When run under golangci-lint, the runner applies its own nolint filtering — both filter the same diagnostics, so the double-filter is a no-op.
+
 ## Known limitations
 
 - **Closure-call-site analysis is limited.** Wrapper-body suppression (v0.3.0) only catches calls inside a function or closure whose return type is a metric instrument. If a wrapper is invoked through a function-typed local variable — e.g. `histogram := func(name string, opts ...metric.Float64HistogramOption) metric.Float64Histogram { ... meter.Float64Histogram(name, append(opts, metric.WithUnit("s"))...) }` and then `histogram("foo")` — the recognizer still sees the call site as a metric-creation site, and options set inside the closure body (like `WithUnit("s")`) are invisible. This typically produces false-positive `histogram_unit` diagnostics. Workaround: inline the construction at the call site so the option is statically visible.

@@ -39,7 +39,11 @@ func makeRun(cfg Config) func(*analysis.Pass) (interface{}, error) {
 
 	return func(pass *analysis.Pass) (interface{}, error) {
 		calls := findMetricCalls(pass, overrides)
+		sup := buildSuppressIndex(pass)
 		for _, mc := range calls {
+			if sup.suppressed(mc) {
+				continue
+			}
 			for _, rule := range enabled {
 				for _, d := range rule.Check(mc) {
 					pass.Reportf(d.Pos, "%s: %s", d.RuleID, d.Message)

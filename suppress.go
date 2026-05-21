@@ -1,0 +1,200 @@
+package otelmetriclint
+
+import (
+	"go/ast"
+	"go/token"
+	"strings"
+
+	"golang.org/x/tools/go/analysis"
+
+	"github.com/bit-mover/otelmetriclint/rules"
+)
+
+const linterName = "otelmetriclint"
+
+// matchesNoLint reports whether commentText (raw text including the
+// leading // or /* and trailing */) is a //nolint directive that
+// suppresses this analyzer.
+//
+// Recognized grammar mirrors golangci-lint:
+//
+//	//nolint                          → suppress everything
+//	//nolint:<linter>[,<linter>...]   → suppress listed linters
+//	//nolint:<list> <reason text>     → reason text after the first "//"
+//	                                    or "/*" in the list segment is
+//	                                    ignored (no leading space required)
+//
+// Parser quirks (also from golangci):
+//   - Leading "//" or "/*" required; no space between "//" and "nolint".
+//   - Keyword is "nolint", case-sensitive.
+//   - Linter names match exactly (no prefix/substring).
+//   - "//nolint:" with an empty list matches nothing — it is NOT treated
+//     as bare "//nolint". This mirrors current golangci-lint behavior.
+func matchesNoLint(commentText string) bool {
+	body, ok := stripCommentDelimiters(commentText)
+	if !ok {
+		return false
+	}
+	if !strings.HasPrefix(body, "nolint") {
+		return false
+	}
+	rest := body[len("nolint"):]
+	// Bare //nolint (or //nolint followed by whitespace) suppresses everything.
+	if rest == "" || isSpace(rest[0]) {
+		return true
+	}
+	if rest[0] != ':' {
+		return false // e.g. "nolintfoo"
+	}
+	listAndReason := rest[1:]
+	// Trim trailing reason text. Anything after the first "//" or "/*" in
+	// the list segment is treated as reason text (no leading space required),
+	// matching golangci-lint.
+	if idx := strings.Index(listAndReason, "//"); idx != -1 {
+		listAndReason = listAndReason[:idx]
+	}
+	if idx := strings.Index(listAndReason, "/*"); idx != -1 {
+		listAndReason = listAndReason[:idx]
+	}
+	for _, name := range strings.Split(listAndReason, ",") {
+		if strings.TrimSpace(name) == linterName {
+			return true
+		}
+	}
+	return false
+}
+
+// stripCommentDelimiters removes the leading "//" or "/*" and the trailing
+// "*/" (if a block comment), returning (body, true). Returns ("", false)
+// if commentText doesn't begin with a recognized delimiter. A space between
+// "//" and the next character disqualifies the comment (golangci's quirk).
+func stripCommentDelimiters(commentText string) (string, bool) {
+	switch {
+	case strings.HasPrefix(commentText, "//"):
+		body := commentText[2:]
+		// The space-after-// quirk: "// nolint" doesn't count.
+		if body == "" || isSpace(body[0]) {
+			return "", false
+		}
+		return body, true
+	case strings.HasPrefix(commentText, "/*"):
+		body := strings.TrimSuffix(commentText[2:], "*/")
+		body = strings.TrimSpace(body)
+		return body, true
+	}
+	return "", false
+}
+
+func isSpace(b byte) bool { return b == ' ' || b == '\t' }
+
+// suppressIndex answers "is this MetricCall suppressed?" in O(1) after
+// construction. Built once per analyzer Run.
+type suppressIndex struct {
+	fset *token.FileSet
+	// directiveEndLine[file] is the set of line numbers where a matching
+	// //nolint directive ends. A trailing directive's start and end are
+	// the same line; a multi-line block directive's end is the last line.
+	directiveEndLine map[*token.File]map[int]bool
+	// packageLine[file] is the source line of the file's `package` keyword.
+	// Used to evaluate file-level directives (`//nolint:otelmetriclint`
+	// placed immediately above `package`).
+	packageLine map[*token.File]int
+}
+
+// buildSuppressIndex scans every comment in pass.Files for //nolint
+// directives that suppress this analyzer and records each directive's
+// end line.
+func buildSuppressIndex(pass *analysis.Pass) suppressIndex {
+	idx := suppressIndex{
+		fset:             pass.Fset,
+		directiveEndLine: make(map[*token.File]map[int]bool),
+		packageLine:      make(map[*token.File]int),
+	}
+	for _, file := range pass.Files {
+		tokFile := pass.Fset.File(file.Pos())
+		if tokFile == nil {
+			continue
+		}
+		if file.Package.IsValid() {
+			idx.packageLine[tokFile] = pass.Fset.Position(file.Package).Line
+		}
+		for _, group := range file.Comments {
+			for _, c := range group.List {
+				if !matchesNoLint(c.Text) {
+					continue
+				}
+				endLine := pass.Fset.Position(c.End()).Line
+				if idx.directiveEndLine[tokFile] == nil {
+					idx.directiveEndLine[tokFile] = make(map[int]bool)
+				}
+				idx.directiveEndLine[tokFile][endLine] = true
+			}
+		}
+	}
+	return idx
+}
+
+// suppressed reports whether a MetricCall at call.Pos is covered by any
+// recognized //nolint directive.
+func (s suppressIndex) suppressed(call rules.MetricCall) bool {
+	if !call.Pos.IsValid() {
+		return false
+	}
+	tokFile := s.fset.File(call.Pos)
+	if tokFile == nil {
+		return false
+	}
+	lines := s.directiveEndLine[tokFile]
+	if lines == nil {
+		return false
+	}
+	callLine := s.fset.Position(call.Pos).Line
+	// Trailing: directive on the same line as the call.
+	if lines[callLine] {
+		return true
+	}
+	// Above call: directive ends on the line immediately preceding the call.
+	// A blank line between directive and call breaks adjacency (golangci's rule).
+	if lines[callLine-1] {
+		return true
+	}
+	// Above any enclosing func: directive ends on the line immediately above
+	// the `func` keyword. One uniform check covers three sub-cases:
+	//   - FuncDecl doc comment (Go convention: doc's last line == funcLine-1)
+	//   - Free-floating //nolint above a FuncDecl (no doc)
+	//   - //nolint above a FuncLit (closure)
+	for _, fn := range call.EnclosingFuncs {
+		funcLine := s.funcKeywordLine(fn)
+		if funcLine > 0 && lines[funcLine-1] {
+			return true
+		}
+	}
+	// File-level: directive ends on the line immediately above the `package`
+	// keyword.
+	if pkgLine := s.packageLine[tokFile]; pkgLine > 0 && lines[pkgLine-1] {
+		return true
+	}
+	return false
+}
+
+// funcKeywordLine returns the source line of the `func` keyword for a
+// *ast.FuncDecl or *ast.FuncLit. Returns 0 for unsupported nodes.
+func (s suppressIndex) funcKeywordLine(n ast.Node) int {
+	var fnTypePos token.Pos
+	switch fn := n.(type) {
+	case *ast.FuncDecl:
+		if fn.Type != nil {
+			fnTypePos = fn.Type.Func
+		}
+	case *ast.FuncLit:
+		if fn.Type != nil {
+			fnTypePos = fn.Type.Func
+		}
+	default:
+		return 0
+	}
+	if !fnTypePos.IsValid() {
+		return 0
+	}
+	return s.fset.Position(fnTypePos).Line
+}
