@@ -45,3 +45,30 @@ func TestAnalyzerWithPrefixConfig(t *testing.T) {
 	analysistest.Run(t, analysistest.TestData(), a, "./src/good_prefix")
 	analysistest.Run(t, analysistest.TestData(), a, "./src/bad_prefix")
 }
+
+// TestAnalyzerCrossPackageUniqueness verifies that when cross_package_uniqueness
+// is enabled, a metric name registered in both pkg_a and pkg_b produces a
+// diagnostic at the pkg_b call site listing pkg_a's import path.
+func TestAnalyzerCrossPackageUniqueness(t *testing.T) {
+	cfg, err := Load("testdata/configs/uniqueness.yaml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	a := New(cfg)
+	analysistest.Run(t, analysistest.TestData(), a,
+		"./src/uniqueness/pkg_a",
+		"./src/uniqueness/pkg_b",
+	)
+}
+
+// TestAnalyzerCrossPackageUniquenessOffByDefault verifies that with the default
+// config (cross_package_uniqueness disabled) no diagnostic is emitted even when
+// the same metric name appears in two packages. The uniqueness_off fixtures
+// contain no // want annotations so analysistest would fail if any diagnostic fired.
+func TestAnalyzerCrossPackageUniquenessOffByDefault(t *testing.T) {
+	a := DefaultAnalyzer()
+	analysistest.Run(t, analysistest.TestData(), a,
+		"./src/uniqueness_off/pkg_a",
+		"./src/uniqueness_off/pkg_b",
+	)
+}
