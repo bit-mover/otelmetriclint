@@ -12,10 +12,11 @@ import (
 // Config controls which rules run and how. Unknown YAML fields are
 // rejected at load to catch typos.
 type Config struct {
-	Rules      map[string]bool  `yaml:"rules,omitempty"`
-	Prefix     PrefixConfig     `yaml:"prefix,omitempty"`
-	UnitSuffix UnitSuffixConfig `yaml:"unit_suffix,omitempty"`
-	Helpers    []HelperConfig   `yaml:"helpers,omitempty"`
+	Rules         map[string]bool     `yaml:"rules,omitempty"`
+	Prefix        PrefixConfig        `yaml:"prefix,omitempty"`
+	UnitSuffix    UnitSuffixConfig    `yaml:"unit_suffix,omitempty"`
+	Pluralization PluralizationConfig `yaml:"pluralization,omitempty"`
+	Helpers       []HelperConfig      `yaml:"helpers,omitempty"`
 }
 
 // PrefixConfig holds the allowlist for the prefix rule.
@@ -27,6 +28,11 @@ type PrefixConfig struct {
 type UnitSuffixConfig struct {
 	Forbidden  []string `yaml:"forbidden,omitempty"`
 	Additional []string `yaml:"additional,omitempty"`
+}
+
+// PluralizationConfig holds the allowlist for the pluralization rule.
+type PluralizationConfig struct {
+	AdditionalAllow []string `yaml:"additional_allow,omitempty"`
 }
 
 // HelperConfig declares an override for a wrapper where the metric name
@@ -49,6 +55,7 @@ func Default() Config {
 			"unit_suffix":               true,
 			"histogram_unit":            true,
 			"cross_package_uniqueness":  false,
+			"pluralization":             true,
 		},
 		UnitSuffix: UnitSuffixConfig{
 			// UCUM unit codes and their expansions only. Quantity
@@ -108,6 +115,9 @@ func merge(base *Config, user Config) {
 	}
 	if len(user.UnitSuffix.Additional) > 0 {
 		base.UnitSuffix.Additional = append(base.UnitSuffix.Additional, user.UnitSuffix.Additional...)
+	}
+	if len(user.Pluralization.AdditionalAllow) > 0 {
+		base.Pluralization.AdditionalAllow = append(base.Pluralization.AdditionalAllow, user.Pluralization.AdditionalAllow...)
 	}
 	if len(user.Helpers) > 0 {
 		base.Helpers = user.Helpers
