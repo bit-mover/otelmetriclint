@@ -44,6 +44,7 @@ Without `-config`, the tool looks for `.otelmetriclint.yaml` in the current work
 | `histogram_unit` | on | Histogram created without `metric.WithUnit(...)` |
 | `cross_package_uniqueness` | **off** | The same OTel metric name is registered in more than one package (detected across import edges — see limitations below) |
 | `pluralization` | on | UpDownCounter (and ObservableUpDownCounter) name's leaf token looks pluralized (e.g. `...connections`) — UpDownCounters measure a current value, so prefer a singular noun like `connection.count`. Heuristic: leaf ends in `s` (excluding `ss`/`us`/`is`), length >= 4, minus an allowlist. |
+| `ucum_unit` | on | `metric.WithUnit(...)` value is not a valid UCUM case-sensitive code (e.g. `"seconds"` instead of `"s"`, `"bytes"` instead of `"By"`). Suggests the canonical UCUM code when a known verbose English word is detected. Extend the accept list with `ucum_unit.additional_allow` for project-local conventions. |
 
 ### cross_package_uniqueness
 
