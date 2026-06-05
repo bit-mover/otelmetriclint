@@ -25,6 +25,7 @@ func TestAnalyzerDefault(t *testing.T) {
 		"./src/bad_observable_total",
 		"./src/bad_observable_gauge",
 		"./src/bad_observable_structural",
+		"./src/bad_pluralization",
 		"./src/suppress_trailing",
 		"./src/suppress_above_call",
 		"./src/suppress_above_func",
