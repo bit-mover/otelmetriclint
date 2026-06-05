@@ -42,6 +42,24 @@ Without `-config`, the tool looks for `.otelmetriclint.yaml` in the current work
 | `total_suffix` | on | Counter ends in `_total` (Prom exporter appends `_total`, causing double-suffix) |
 | `unit_suffix` | on | Final segment is a UCUM unit code like `seconds`, `bytes`, `ms` — units belong in `WithUnit(...)`. Quantity descriptors (`duration`, `count`) are allowed because OTel semconv uses them canonically (`http.server.request.duration`, `db.client.connection.count`). |
 | `histogram_unit` | on | Histogram created without `metric.WithUnit(...)` |
+| `cross_package_uniqueness` | **off** | The same OTel metric name is registered in more than one package (detected across import edges — see limitations below) |
+
+### cross_package_uniqueness
+
+Enable this rule when you want the linter to flag the same OTel metric name being registered in more than one package. Because duplicate names across independently-deployed binaries cannot be detected statically, the rule is **off by default**.
+
+To enable:
+
+```yaml
+rules:
+  cross_package_uniqueness: true
+```
+
+**Limitations:**
+
+1. **Import-edge reach.** Collisions are only detected when the registrations are reachable through an import edge — e.g. a package that imports another, or a `cmd` package that imports both. Two fully independent binaries that happen to define the same metric name are not compared.
+
+2. **Diagnostic anchor.** The diagnostic is reported at the importing package's registration site, not symmetrically at both sites. The other side of the collision is identified in the message, but is not itself flagged.
 
 ## Configuration
 

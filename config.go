@@ -42,12 +42,13 @@ type HelperConfig struct {
 func Default() Config {
 	return Config{
 		Rules: map[string]bool{
-			"string_literal": true,
-			"structural":     true,
-			"prefix":         false,
-			"total_suffix":   true,
-			"unit_suffix":    true,
-			"histogram_unit": true,
+			"string_literal":            true,
+			"structural":                true,
+			"prefix":                    false,
+			"total_suffix":              true,
+			"unit_suffix":               true,
+			"histogram_unit":            true,
+			"cross_package_uniqueness":  false,
 		},
 		UnitSuffix: UnitSuffixConfig{
 			// UCUM unit codes and their expansions only. Quantity
