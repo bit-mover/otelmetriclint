@@ -288,15 +288,19 @@ func callTarget(pass *analysis.Pass, call *ast.CallExpr) (pkg, fn string) {
 	return "", ""
 }
 
-// stringLiteralValue returns the unquoted string value of e if it is a
-// *ast.BasicLit of kind STRING. Returns ("", false) for non-literal
-// expressions (identifiers, calls, etc.) so the string_literal rule can fire.
+// stringLiteralValue returns the resolved string value of e when e is a
+// compile-time constant string expression. This includes:
+//   - string literals ("foo.bar")
+//   - const identifiers (const name = "foo.bar")
+//   - string conversions of const expressions (string(constExpr))
+//   - constant concatenation ("foo." + "bar", constA + constB)
+//   - imported package-level string constants (pkg.ConstName)
+//
+// Non-constant expressions (runtime variables, function calls, fmt.Sprintf,
+// etc.) return ("", false) so the string_literal rule can report them.
 func stringLiteralValue(pass *analysis.Pass, e ast.Expr) (string, bool) {
 	tv, ok := pass.TypesInfo.Types[e]
 	if !ok || tv.Value == nil || tv.Value.Kind() != constant.String {
-		return "", false
-	}
-	if _, isLit := e.(*ast.BasicLit); !isLit {
 		return "", false
 	}
 	return constant.StringVal(tv.Value), true

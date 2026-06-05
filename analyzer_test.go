@@ -21,6 +21,7 @@ func TestAnalyzerDefault(t *testing.T) {
 		"./src/bad_total_suffix",
 		"./src/bad_unit_suffix",
 		"./src/bad_histogram_unit",
+		"./src/bad_const_name",
 		"./src/suppress_trailing",
 		"./src/suppress_above_call",
 		"./src/suppress_above_func",
