@@ -108,6 +108,16 @@ func main() {
 		{"kilobytes", "KBy"},
 		{"megabytes", "MBy"},
 		{"gigabytes", "GBy"},
+		// Bit forms. UCUM's atom is `bit` (metric, so prefixes apply);
+		// OTel's wordToUCUM has no bit entries, so these extend it for
+		// symmetry with the byte suggestions above.
+		{"bits", "bit"},
+		{"kilobits", "kbit"},
+		{"megabits", "Mbit"},
+		{"gigabits", "Gbit"},
+		{"kibibits", "Kibit"},
+		{"mebibits", "Mibit"},
+		{"gibibits", "Gibit"},
 		{"meters", "m"},
 		{"volts", "V"},
 		{"amperes", "A"},

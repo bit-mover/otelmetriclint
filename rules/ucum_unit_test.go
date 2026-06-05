@@ -58,6 +58,9 @@ func TestSuggestUCUM(t *testing.T) {
 		"Seconds":      "s",   // case-insensitive
 		"SECONDS":      "s",
 		"bytes":        "By",
+		"bits":         "bit",  // bit forms get the same suggestion treatment
+		"Bits":         "bit",  // case-insensitive
+		"megabits":     "Mbit",
 		"milliseconds": "ms",
 		"percent":      "%",
 	}
