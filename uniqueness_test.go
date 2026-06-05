@@ -49,7 +49,7 @@ func TestRegisteredNamesString(t *testing.T) {
 
 // TestRegisteredNamesAFact ensures registeredNames satisfies the analysis.Fact
 // interface (AFact method exists and does not panic).
-func TestRegisteredNamesAFact(t *testing.T) {
+func TestRegisteredNamesAFact(_ *testing.T) {
 	rn := &registeredNames{}
 	// AFact is a marker; calling it should not panic.
 	rn.AFact()
