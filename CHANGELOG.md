@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Fixed
+
+- **Const-folded metric names now resolve correctly (closes #16).** Previously, a metric name built from a chain of named constants (e.g. `const prefix = "app."; const name = prefix + "requests"`) was not evaluated to its final string value, causing the recognizer to treat it as a non-literal and emit a false-positive `string_literal` diagnostic. The analyzer now folds constant expressions to their concrete string value before applying rules, so names constructed entirely from `const` declarations are accepted without suppression.
+
+- **Observable instruments are now recognized (closes #15).** `Int64ObservableCounter`, `Float64ObservableCounter`, `Int64ObservableUpDownCounter`, `Float64ObservableUpDownCounter`, `Int64ObservableGauge`, and `Float64ObservableGauge` meter methods were missing from the recognizer's instrument table and were silently skipped. All six are now treated as metric-creation call sites. `ObservableCounter` variants are classified as monotonic (equivalent to `Counter`) so that the `total_suffix` rule correctly requires a `_total` suffix, consistent with Prometheus naming conventions for monotonically increasing counters.
+
 ### Added
 
 - **Inline suppression directives.** Standalone runs now honor `//nolint:otelmetriclint` placed trailing on a call's line, on the line immediately above a call, above an enclosing `func` or closure, or above the `package` keyword. Mirrors the subset of golangci-lint's nolint grammar that whole-linter suppression covers — no per-rule scoping. See README §"Suppressing diagnostics". Closes #18.

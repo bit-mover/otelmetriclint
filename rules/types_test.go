@@ -15,6 +15,12 @@ func TestInstrumentKindString(t *testing.T) {
 		{KindFloat64Histogram, "Float64Histogram"},
 		{KindInt64Gauge, "Int64Gauge"},
 		{KindFloat64Gauge, "Float64Gauge"},
+		{KindInt64ObservableCounter, "Int64ObservableCounter"},
+		{KindFloat64ObservableCounter, "Float64ObservableCounter"},
+		{KindInt64ObservableUpDownCounter, "Int64ObservableUpDownCounter"},
+		{KindFloat64ObservableUpDownCounter, "Float64ObservableUpDownCounter"},
+		{KindInt64ObservableGauge, "Int64ObservableGauge"},
+		{KindFloat64ObservableGauge, "Float64ObservableGauge"},
 	}
 	for _, tc := range cases {
 		if got := tc.kind.String(); got != tc.want {
