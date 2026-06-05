@@ -73,6 +73,13 @@ func (k InstrumentKind) IsCounter() bool {
 		k == KindInt64ObservableCounter || k == KindFloat64ObservableCounter
 }
 
+// IsUpDownCounter reports whether the kind is one of the up-down counter
+// families (synchronous or asynchronous).
+func (k InstrumentKind) IsUpDownCounter() bool {
+	return k == KindInt64UpDownCounter || k == KindFloat64UpDownCounter ||
+		k == KindInt64ObservableUpDownCounter || k == KindFloat64ObservableUpDownCounter
+}
+
 // IsHistogram reports whether the kind is one of the histogram families.
 func (k InstrumentKind) IsHistogram() bool {
 	return k == KindInt64Histogram || k == KindFloat64Histogram
