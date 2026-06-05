@@ -43,6 +43,7 @@ Without `-config`, the tool looks for `.otelmetriclint.yaml` in the current work
 | `unit_suffix` | on | Final segment is a UCUM unit code like `seconds`, `bytes`, `ms` — units belong in `WithUnit(...)`. Quantity descriptors (`duration`, `count`) are allowed because OTel semconv uses them canonically (`http.server.request.duration`, `db.client.connection.count`). |
 | `histogram_unit` | on | Histogram created without `metric.WithUnit(...)` |
 | `cross_package_uniqueness` | **off** | The same OTel metric name is registered in more than one package (detected across import edges — see limitations below) |
+| `pluralization` | on | UpDownCounter (and ObservableUpDownCounter) name's leaf token looks pluralized (e.g. `...connections`) — UpDownCounters measure a current value, so prefer a singular noun like `connection.count`. Heuristic: leaf ends in `s` (excluding `ss`/`us`/`is`), length >= 4, minus an allowlist. |
 
 ### cross_package_uniqueness
 
@@ -60,6 +61,26 @@ rules:
 1. **Import-edge reach.** Collisions are only detected when the registrations are reachable through an import edge — e.g. a package that imports another, or a `cmd` package that imports both. Two fully independent binaries that happen to define the same metric name are not compared.
 
 2. **Diagnostic anchor.** The diagnostic is reported at the importing package's registration site, not symmetrically at both sites. The other side of the collision is identified in the message, but is not itself flagged.
+
+### pluralization
+
+This rule is **on by default**. It flags UpDownCounter and ObservableUpDownCounter registrations whose leaf name segment looks pluralized — e.g. `system.network.connections` — because UpDownCounters measure a current value (a gauge-like quantity) and should use a singular noun.
+
+The heuristic is: the leaf segment ends in `s`, is at least 4 characters long, and does not end in `ss`, `us`, or `is`. A built-in allowlist exempts words that are legitimately singular despite ending in `s`:
+
+- `series`
+- `kubernetes`
+- `https`
+- `analytics`
+- `statistics`
+- `diagnostics`
+
+To extend the allowlist with project-specific terms, add them under `pluralization.additional_allow` in your config file. This **appends** to the built-in list — it does not replace it:
+
+```yaml
+pluralization:
+  additional_allow: [myseries, customterm]
+```
 
 ## Configuration
 
