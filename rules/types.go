@@ -23,6 +23,12 @@ const (
 	KindFloat64Histogram
 	KindInt64Gauge
 	KindFloat64Gauge
+	KindInt64ObservableCounter
+	KindFloat64ObservableCounter
+	KindInt64ObservableUpDownCounter
+	KindFloat64ObservableUpDownCounter
+	KindInt64ObservableGauge
+	KindFloat64ObservableGauge
 )
 
 func (k InstrumentKind) String() string {
@@ -43,13 +49,28 @@ func (k InstrumentKind) String() string {
 		return "Int64Gauge"
 	case KindFloat64Gauge:
 		return "Float64Gauge"
+	case KindInt64ObservableCounter:
+		return "Int64ObservableCounter"
+	case KindFloat64ObservableCounter:
+		return "Float64ObservableCounter"
+	case KindInt64ObservableUpDownCounter:
+		return "Int64ObservableUpDownCounter"
+	case KindFloat64ObservableUpDownCounter:
+		return "Float64ObservableUpDownCounter"
+	case KindInt64ObservableGauge:
+		return "Int64ObservableGauge"
+	case KindFloat64ObservableGauge:
+		return "Float64ObservableGauge"
 	}
 	return "Unknown"
 }
 
-// IsCounter reports whether the kind is one of the counter families.
+// IsCounter reports whether the kind is one of the monotonic counter families
+// (synchronous or asynchronous). ObservableUpDownCounter is not included
+// because it is non-monotonic.
 func (k InstrumentKind) IsCounter() bool {
-	return k == KindInt64Counter || k == KindFloat64Counter
+	return k == KindInt64Counter || k == KindFloat64Counter ||
+		k == KindInt64ObservableCounter || k == KindFloat64ObservableCounter
 }
 
 // IsHistogram reports whether the kind is one of the histogram families.
