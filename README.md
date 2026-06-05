@@ -45,6 +45,7 @@ Without `-config`, the tool looks for `.otelmetriclint.yaml` in the current work
 | `cross_package_uniqueness` | **off** | The same OTel metric name is registered in more than one package (detected across import edges — see limitations below) |
 | `pluralization` | on | UpDownCounter (and ObservableUpDownCounter) name's leaf token looks pluralized (e.g. `...connections`) — UpDownCounters measure a current value, so prefer a singular noun like `connection.count`. Heuristic: leaf ends in `s` (excluding `ss`/`us`/`is`), length >= 4, minus an allowlist. |
 | `ucum_unit` | on | `metric.WithUnit(...)` value is not a valid UCUM case-sensitive code (e.g. `"seconds"` instead of `"s"`, `"bytes"` instead of `"By"`). Suggests the canonical UCUM code when a known verbose English word is detected. Extend the accept list with `ucum_unit.additional_allow` for project-local conventions. |
+| `semconv` | **off** | Metric name's root segment is a claimed OTel semconv namespace (e.g. `http`, `db`, `k8s`) but the full name is not a registered semantic-convention metric. Suggests the closest registered name when the edit distance is small (≤ 3 and < half the name length). Unclaimed root segments (project-specific prefixes like `cedar`, `acme`) are never flagged — the namespace firewall prevents false positives. |
 
 ### cross_package_uniqueness
 
@@ -81,6 +82,28 @@ To extend the allowlist with project-specific terms, add them under `pluralizati
 ```yaml
 pluralization:
   additional_allow: [myseries, customterm]
+```
+
+### semconv
+
+This rule is **off by default**. When enabled, it flags any metric name whose root namespace segment is a claimed OTel semconv namespace (e.g. `http`, `db`, `k8s`, `process`, `system`) but whose full name is not a registered semantic-convention metric. This catches typos and near-misses like `http.server.request.durations` instead of the canonical `http.server.request.duration`.
+
+To enable:
+
+```yaml
+rules:
+  semconv: true
+```
+
+**Namespace firewall.** Only metric names whose root segment is a known semconv namespace are checked. Project-specific prefixes (e.g. `cedar.policy.swaps`, `acme.billing.invoices`) are never flagged, even when the rule is enabled. This prevents the rule from producing false positives on custom metric namespaces.
+
+**Near-miss suggestions.** When a deviating name is within Levenshtein distance ≤ 3 of a registered name in the same namespace, and that distance is strictly less than half the name's length, the diagnostic includes a `did you mean "..."?` suggestion.
+
+**Allow list.** To accept non-registered names under a claimed namespace (e.g. internal metrics that share an OTel namespace prefix), add them under `semconv.additional_allow` in your config file. This **appends** to the default empty list:
+
+```yaml
+semconv:
+  additional_allow: [http.server.custom.internal_metric]
 ```
 
 ## Configuration
