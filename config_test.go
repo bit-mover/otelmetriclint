@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"testing"
 )
 
@@ -17,6 +18,9 @@ func TestDefaultConfig(t *testing.T) {
 	}
 	if len(c.UnitSuffix.Forbidden) == 0 {
 		t.Error("default unit_suffix.forbidden should be non-empty")
+	}
+	if !c.Rules["pluralization"] {
+		t.Error("pluralization should default true")
 	}
 }
 
@@ -66,6 +70,28 @@ func TestLoadConfigEmptyPathReturnsDefaults(t *testing.T) {
 	}
 	if !reflect.DeepEqual(c, Default()) {
 		t.Error("Load(\"\") should equal Default()")
+	}
+}
+
+func TestLoadConfigPluralizationAdditionalAllowAppendMerge(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, ".otelmetriclint.yaml")
+	contents := []byte(`
+pluralization:
+  additional_allow: [data, info]
+`)
+	if err := os.WriteFile(path, contents, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	c, err := Load(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []string{"data", "info"}
+	for _, entry := range want {
+		if !slices.Contains(c.Pluralization.AdditionalAllow, entry) {
+			t.Errorf("Pluralization.AdditionalAllow = %v, missing expected entry %q", c.Pluralization.AdditionalAllow, entry)
+		}
 	}
 }
 

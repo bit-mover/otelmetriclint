@@ -49,6 +49,33 @@ func ruleIDs(rs []Rule) []string {
 	return out
 }
 
+func TestIsUpDownCounter(t *testing.T) {
+	cases := []struct {
+		kind InstrumentKind
+		want bool
+	}{
+		{KindInt64Counter, false},
+		{KindFloat64Counter, false},
+		{KindInt64UpDownCounter, true},
+		{KindFloat64UpDownCounter, true},
+		{KindInt64Histogram, false},
+		{KindFloat64Histogram, false},
+		{KindInt64Gauge, false},
+		{KindFloat64Gauge, false},
+		{KindInt64ObservableCounter, false},
+		{KindFloat64ObservableCounter, false},
+		{KindInt64ObservableUpDownCounter, true},
+		{KindFloat64ObservableUpDownCounter, true},
+		{KindInt64ObservableGauge, false},
+		{KindFloat64ObservableGauge, false},
+	}
+	for _, tc := range cases {
+		if got := tc.kind.IsUpDownCounter(); got != tc.want {
+			t.Errorf("InstrumentKind(%d).IsUpDownCounter() = %v, want %v", tc.kind, got, tc.want)
+		}
+	}
+}
+
 type stubRule struct{ id string }
 
 func (s stubRule) ID() string                    { return s.id }

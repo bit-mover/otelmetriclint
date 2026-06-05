@@ -16,6 +16,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 - **`cross_package_uniqueness` rule (off by default).** Flags the same OTel metric name registered in more than one package, detected across import edges. Off by default because detection is limited to packages reachable through a shared import graph; two fully independent binaries are not compared. Enable with `rules: cross_package_uniqueness: true`. Closes #17.
 - **Inline suppression directives.** Standalone runs now honor `//nolint:otelmetriclint` placed trailing on a call's line, on the line immediately above a call, above an enclosing `func` or closure, or above the `package` keyword. Mirrors the subset of golangci-lint's nolint grammar that whole-linter suppression covers — no per-rule scoping. See README §"Suppressing diagnostics". Closes #18.
+- **`pluralization` rule (on by default).** Flags UpDownCounter and ObservableUpDownCounter metric names whose leaf token appears pluralized (e.g. `db.client.connections`); UpDownCounters represent a current value, so a singular form like `connection.count` is preferred. Uses a permissive heuristic (leaf ends in `s`, excluding `ss`/`us`/`is`, length >= 4) plus a built-in allowlist extendable via `pluralization: additional_allow: [...]`. Closes #29.
 
 ## [0.3.0] - 2026-05-20
 

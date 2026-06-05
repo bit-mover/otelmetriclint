@@ -36,6 +36,7 @@ func makeRun(cfg Config) func(*analysis.Pass) (interface{}, error) {
 		rules.TotalSuffix{},
 		rules.UnitSuffix{Forbidden: mergeUnitSuffix(cfg.UnitSuffix)},
 		rules.HistogramUnit{},
+		rules.Pluralization{Allow: mergePluralAllow(cfg.Pluralization)},
 	}}
 	overrides := make([]HelperOverride, len(cfg.Helpers))
 	for i, h := range cfg.Helpers {
@@ -81,5 +82,22 @@ func mergeUnitSuffix(c UnitSuffixConfig) []string {
 	out := make([]string, 0, len(c.Forbidden)+len(c.Additional))
 	out = append(out, c.Forbidden...)
 	out = append(out, c.Additional...)
+	return out
+}
+
+// mergePluralAllow returns the built-in curated allowlist unioned with any
+// project-specific additions (built-in first, then additions).
+func mergePluralAllow(c PluralizationConfig) []string {
+	builtin := []string{
+		"series",
+		"kubernetes",
+		"https",
+		"analytics",
+		"statistics",
+		"diagnostics",
+	}
+	out := make([]string, 0, len(builtin)+len(c.AdditionalAllow))
+	out = append(out, builtin...)
+	out = append(out, c.AdditionalAllow...)
 	return out
 }
