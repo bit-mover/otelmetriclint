@@ -37,6 +37,7 @@ func makeRun(cfg Config) func(*analysis.Pass) (interface{}, error) {
 		rules.UnitSuffix{Forbidden: mergeUnitSuffix(cfg.UnitSuffix)},
 		rules.HistogramUnit{},
 		rules.Pluralization{Allow: mergePluralAllow(cfg.Pluralization)},
+		rules.UCUMUnit{Allow: mergeUCUMAllow(cfg.UCUMUnit)},
 	}}
 	overrides := make([]HelperOverride, len(cfg.Helpers))
 	for i, h := range cfg.Helpers {
@@ -82,6 +83,17 @@ func mergeUnitSuffix(c UnitSuffixConfig) []string {
 	out := make([]string, 0, len(c.Forbidden)+len(c.Additional))
 	out = append(out, c.Forbidden...)
 	out = append(out, c.Additional...)
+	return out
+}
+
+// mergeUCUMAllow returns any project-specific UCUM allowlist entries. The
+// ucum_unit rule has no built-in allowlist; all exceptions must be explicit.
+func mergeUCUMAllow(c UCUMUnitConfig) []string {
+	if len(c.AdditionalAllow) == 0 {
+		return nil
+	}
+	out := make([]string, len(c.AdditionalAllow))
+	copy(out, c.AdditionalAllow)
 	return out
 }
 
