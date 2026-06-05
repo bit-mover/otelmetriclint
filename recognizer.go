@@ -41,6 +41,18 @@ func matchInstrumentKind(t types.Type) (rules.InstrumentKind, bool) {
 		return rules.KindInt64Gauge, true
 	case "Float64Gauge":
 		return rules.KindFloat64Gauge, true
+	case "Int64ObservableCounter":
+		return rules.KindInt64ObservableCounter, true
+	case "Float64ObservableCounter":
+		return rules.KindFloat64ObservableCounter, true
+	case "Int64ObservableUpDownCounter":
+		return rules.KindInt64ObservableUpDownCounter, true
+	case "Float64ObservableUpDownCounter":
+		return rules.KindFloat64ObservableUpDownCounter, true
+	case "Int64ObservableGauge":
+		return rules.KindInt64ObservableGauge, true
+	case "Float64ObservableGauge":
+		return rules.KindFloat64ObservableGauge, true
 	}
 	return rules.KindUnknown, false
 }
