@@ -17,6 +17,7 @@ type Config struct {
 	UnitSuffix    UnitSuffixConfig    `yaml:"unit_suffix,omitempty"`
 	Pluralization PluralizationConfig `yaml:"pluralization,omitempty"`
 	UCUMUnit      UCUMUnitConfig      `yaml:"ucum_unit,omitempty"`
+	Semconv       SemconvConfig       `yaml:"semconv,omitempty"`
 	Helpers       []HelperConfig      `yaml:"helpers,omitempty"`
 }
 
@@ -38,6 +39,11 @@ type PluralizationConfig struct {
 
 // UCUMUnitConfig holds the allowlist for the ucum_unit rule.
 type UCUMUnitConfig struct {
+	AdditionalAllow []string `yaml:"additional_allow,omitempty"`
+}
+
+// SemconvConfig holds the allowlist for the semconv rule.
+type SemconvConfig struct {
 	AdditionalAllow []string `yaml:"additional_allow,omitempty"`
 }
 
@@ -63,6 +69,7 @@ func Default() Config {
 			"cross_package_uniqueness":  false,
 			"pluralization":             true,
 			"ucum_unit":                 true,
+			"semconv":                   false,
 		},
 		UnitSuffix: UnitSuffixConfig{
 			// UCUM unit codes and their expansions only. Quantity
@@ -128,6 +135,9 @@ func merge(base *Config, user Config) {
 	}
 	if len(user.UCUMUnit.AdditionalAllow) > 0 {
 		base.UCUMUnit.AdditionalAllow = append(base.UCUMUnit.AdditionalAllow, user.UCUMUnit.AdditionalAllow...)
+	}
+	if len(user.Semconv.AdditionalAllow) > 0 {
+		base.Semconv.AdditionalAllow = append(base.Semconv.AdditionalAllow, user.Semconv.AdditionalAllow...)
 	}
 	if len(user.Helpers) > 0 {
 		base.Helpers = user.Helpers
