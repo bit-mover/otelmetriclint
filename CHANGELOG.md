@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-06-06
+
 ### Fixed
 
 - **Const-folded metric names now resolve correctly (closes #16).** Previously, a metric name built from a chain of named constants (e.g. `const prefix = "app."; const name = prefix + "requests"`) was not evaluated to its final string value, causing the recognizer to treat it as a non-literal and emit a false-positive `string_literal` diagnostic. The analyzer now folds constant expressions to their concrete string value before applying rules, so names constructed entirely from `const` declarations are accepted without suppression.
@@ -18,6 +20,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - **Inline suppression directives.** Standalone runs now honor `//nolint:otelmetriclint` placed trailing on a call's line, on the line immediately above a call, above an enclosing `func` or closure, or above the `package` keyword. Mirrors the subset of golangci-lint's nolint grammar that whole-linter suppression covers — no per-rule scoping. See README §"Suppressing diagnostics". Closes #18.
 - **`pluralization` rule (on by default).** Flags UpDownCounter and ObservableUpDownCounter metric names whose leaf token appears pluralized (e.g. `db.client.connections`); UpDownCounters represent a current value, so a singular form like `connection.count` is preferred. Uses a permissive heuristic (leaf ends in `s`, excluding `ss`/`us`/`is`, length >= 4) plus a built-in allowlist extendable via `pluralization: additional_allow: [...]`. Closes #29.
 - **`ucum_unit` rule (on by default — upgrade may surface new diagnostics).** Validates the string argument of every `metric.WithUnit(...)` call against the UCUM case-sensitive code specification. Verbose English words like `"seconds"` or `"bytes"` are flagged with a suggestion (`"s"`, `"By"`); unrecognized strings receive a generic message pointing to ucum.org. Silent on valid UCUM codes (`"s"`, `"By"`, `"By/s"`, `"{event}"`, etc.) and on non-literal arguments. Projects with project-local unit conventions can suppress specific values via `ucum_unit: additional_allow: [my_unit]` in the config file. Closes #30.
+- **`semconv` rule (off by default).** Validates metric names against a vendored snapshot of the OpenTelemetry semantic-conventions registry (v1.41.1). Only names whose root namespace is one the registry claims (e.g. `http`, `db`, `messaging`) are checked, so project-specific namespaces are never flagged; a name under a claimed namespace that is not a registered metric is reported, with a nearest-match `did you mean "…"?` suggestion computed within that namespace. The most opinionated rule, so off by default — enable with `rules: semconv: true`. Project-local exceptions via `semconv: additional_allow: [...]`. The vendored snapshot is regenerated offline by `tools/gensemconv`; no network access at build or run time. Closes #31.
 
 ## [0.3.0] - 2026-05-20
 
@@ -33,6 +36,7 @@ If a project's `func` or closure returns a metric instrument and contains a metr
 
 - Wrapper-body suppression only fires for calls *inside* a function or closure whose return type is a metric instrument. Wrappers invoked through a function-typed local variable (e.g. `histogram := func(...) metric.Float64Histogram { ... }` then `histogram("foo")`) still appear as metric-creation call sites, so options set inside the closure body — including `WithUnit(...)` — are invisible. Expect false-positive `histogram_unit` diagnostics in that shape. Workaround: inline the construction at the call site. See README "Known limitations".
 
+[0.4.0]: https://github.com/bit-mover/otelmetriclint/releases/tag/v0.4.0
 [0.3.0]: https://github.com/bit-mover/otelmetriclint/releases/tag/v0.3.0
 
 ## [0.2.0] - 2026-05-20
