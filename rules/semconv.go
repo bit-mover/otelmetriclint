@@ -128,17 +128,8 @@ func levenshtein(a, b string) int {
 			if a[i-1] == b[j-1] {
 				cost = 0
 			}
-			del := prev[j] + 1
-			ins := curr[j-1] + 1
-			sub := prev[j-1] + cost
-			min := del
-			if ins < min {
-				min = ins
-			}
-			if sub < min {
-				min = sub
-			}
-			curr[j] = min
+			// deletion, insertion, substitution
+			curr[j] = min(prev[j]+1, curr[j-1]+1, prev[j-1]+cost)
 		}
 		prev, curr = curr, prev
 	}
