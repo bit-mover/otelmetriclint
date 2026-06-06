@@ -78,3 +78,25 @@ func TestAnalyzerCrossPackageUniquenessOffByDefault(t *testing.T) {
 		"./src/uniqueness_off/pkg_b",
 	)
 }
+
+// TestAnalyzerSemconv verifies that when the semconv rule is enabled, a metric
+// name in a known semconv namespace that deviates from registered names produces
+// a diagnostic with a near-miss suggestion, while registered names and
+// project-namespaced names stay silent.
+func TestAnalyzerSemconv(t *testing.T) {
+	cfg, err := Load("testdata/configs/semconv.yaml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	a := New(cfg)
+	analysistest.Run(t, analysistest.TestData(), a, "./src/bad_semconv")
+}
+
+// TestAnalyzerSemconvOffByDefault verifies that with the default config
+// (semconv disabled) no diagnostic is emitted even for deviating names in
+// known semconv namespaces. The semconv_off fixture contains no // want
+// annotations so analysistest would fail if any diagnostic fired.
+func TestAnalyzerSemconvOffByDefault(t *testing.T) {
+	a := DefaultAnalyzer()
+	analysistest.Run(t, analysistest.TestData(), a, "./src/semconv_off")
+}

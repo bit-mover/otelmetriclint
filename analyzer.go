@@ -38,6 +38,7 @@ func makeRun(cfg Config) func(*analysis.Pass) (interface{}, error) {
 		rules.HistogramUnit{},
 		rules.Pluralization{Allow: mergePluralAllow(cfg.Pluralization)},
 		rules.UCUMUnit{Allow: mergeUCUMAllow(cfg.UCUMUnit)},
+		rules.Semconv{Allow: mergeSemconvAllow(cfg.Semconv)},
 	}}
 	overrides := make([]HelperOverride, len(cfg.Helpers))
 	for i, h := range cfg.Helpers {
@@ -89,6 +90,18 @@ func mergeUnitSuffix(c UnitSuffixConfig) []string {
 // mergeUCUMAllow returns any project-specific UCUM allowlist entries. The
 // ucum_unit rule has no built-in allowlist; all exceptions must be explicit.
 func mergeUCUMAllow(c UCUMUnitConfig) []string {
+	if len(c.AdditionalAllow) == 0 {
+		return nil
+	}
+	out := make([]string, len(c.AdditionalAllow))
+	copy(out, c.AdditionalAllow)
+	return out
+}
+
+// mergeSemconvAllow returns any project-specific semconv allowlist entries.
+// The semconv rule has no built-in allowlist; the generated registry data is
+// the source of truth and all exceptions must be explicit.
+func mergeSemconvAllow(c SemconvConfig) []string {
 	if len(c.AdditionalAllow) == 0 {
 		return nil
 	}
